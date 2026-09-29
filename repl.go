@@ -5,33 +5,19 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/ppieniazek/pokedexcli/internal/pokeapi"
 )
 
-type cliCommand struct {
-	name        string
-	description string
-	callback    func() error
+type config struct {
+	commands         map[string]cliCommand
+	pokeapiClient    pokeapi.Client
+	nextLocationsURL *string
+	prevLocationsURL *string
 }
 
-var commands = make(map[string]cliCommand)
-
-func initCommands() {
-	commands["exit"] = cliCommand{
-		name:        "exit",
-		description: "Exit the Pokedex",
-		callback:    commandExit,
-	}
-	commands["help"] = cliCommand{
-		name:        "help",
-		description: "Displays a help message",
-		callback:    commandHelp,
-	}
-}
-
-func startRepl() {
-	initCommands()
+func startRepl(cfg *config) {
 	reader := bufio.NewScanner(os.Stdin)
-
 	for {
 		fmt.Print("Pokedex > ")
 		reader.Scan()
@@ -42,16 +28,18 @@ func startRepl() {
 		}
 
 		commandName := words[0]
-		_, ok := commands[commandName]
-		if ok {
-			err := commands[commandName].callback()
+
+		command, exists := cfg.commands[commandName]
+		if exists {
+			err := command.callback(cfg)
 			if err != nil {
 				fmt.Println(err)
 			}
+			continue
 		} else {
 			fmt.Println("Unknown command")
+			continue
 		}
-
 	}
 }
 
@@ -61,16 +49,33 @@ func cleanInput(text string) []string {
 	return words
 }
 
-func commandExit() error {
-	fmt.Println("Closing the Pokedex... Goodbye!")
-	os.Exit(0)
-	return nil
+type cliCommand struct {
+	name        string
+	description string
+	callback    func(*config) error
 }
 
-func commandHelp() error {
-	fmt.Println("Welcome to the Pokedex!\nUsage:\n")
-	for _, command := range commands {
-		fmt.Printf("%s: %s\n", command.name, command.description)
+func getCommands() map[string]cliCommand {
+	return map[string]cliCommand{
+		"help": {
+			name:        "help",
+			description: "Displays a help message",
+			callback:    commandHelp,
+		},
+		"exit": {
+			name:        "exit",
+			description: "Exit the Pokedex",
+			callback:    commandExit,
+		},
+		"map": {
+			name:        "map",
+			description: "Get the next page of locations",
+			callback:    commandMapf,
+		},
+		"mapb": {
+			name:        "mapb",
+			description: "Get the previous page of locations",
+			callback:    commandMapb,
+		},
 	}
-	return nil
 }
