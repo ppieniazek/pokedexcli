@@ -5,10 +5,13 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/ppieniazek/pokedexcli/internal/pokeapi"
 )
 
 type config struct {
 	commands         map[string]cliCommand
+	pokeapiClient    pokeapi.Client
 	nextLocationsURL *string
 	prevLocationsURL *string
 }

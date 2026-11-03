@@ -2,10 +2,9 @@ package pokeapi
 
 import (
 	"encoding/json/v2"
-	"net/http"
 )
 
-type LocatonAreas struct {
+type LocationAreas struct {
 	Count    int     `json:"count"`
 	Next     *string `json:"next"`
 	Previous *string `json:"previous"`
@@ -15,22 +14,39 @@ type LocatonAreas struct {
 	} `json:"results"`
 }
 
-func GetLocations(pageURL *string) (LocatonAreas, error) {
+func (c *Client) GetLocations(pageURL *string) (LocationAreas, error) {
 	url := baseURL + "/location-area"
 	if pageURL != nil {
 		url = *pageURL
 	}
 
-	res, err := http.Get(url)
+	// Check the cache
+	if val, ok := c.cache.Get(url); ok {
+		var locationAreas LocationAreas
+		if err := json.Unmarshal(val, &locationAreas); err != nil {
+			return LocationAreas{}, err
+		}
+		return locationAreas, nil
+
+	}
+
+	res, err := c.httpClient.Get(url)
 	if err != nil {
-		return LocatonAreas{}, err
+		return LocationAreas{}, err
 	}
 	defer res.Body.Close()
 
-	var locationArea LocatonAreas
-	err = json.UnmarshalRead(res.Body, &locationArea)
+	var locationAreas LocationAreas
+	err = json.UnmarshalRead(res.Body, &locationAreas)
 	if err != nil {
-		return LocatonAreas{}, err
+		return LocationAreas{}, err
 	}
-	return locationArea, nil
+
+	locationVal, err := json.Marshal(locationAreas)
+	if err != nil {
+		return LocationAreas{}, err
+	}
+	c.cache.Add(url, locationVal)
+
+	return locationAreas, nil
 }
